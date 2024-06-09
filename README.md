@@ -17,5 +17,6 @@ register akun baru
 
 saat melakukan login menggunakan email dan password
 
+![image](https://github.com/Trenttzzz/strukdat-modul-6-IT14-/assets/136203533/f639696f-da69-4e4e-b554-abd9dc860764)
 
-
+saat Melakukan register akun admin
