@@ -5,6 +5,7 @@
 #include <functional>
 #include <sstream>
 #include <limits>
+#include <vector>
 
 using namespace std;
 
@@ -227,24 +228,15 @@ public:
         }
     }
 
-    void editUser(const string &usernameToEdit)
+    void editUser(const string &emailToEdit)
     {
-        auto it = users.begin();
-        for (; it != users.end(); ++it)
+        if (users.count(emailToEdit) == 0)
         {
-            if (it->second.username == usernameToEdit)
-            {
-                break; // Keluar dari loop jika user ditemukan
-            }
-        }
-
-        if (it == users.end())
-        {
-            cout << "Username tidak ditemukan!\n";
+            cout << "Email tidak ditemukan!\n";
             return;
         }
 
-        User &userToEdit = it->second; // Reference ke user yang akan diedit
+        User &userToEdit = users[emailToEdit]; // Reference ke user yang akan diedit
 
         cout << "\nEdit User:\n";
 
@@ -354,30 +346,21 @@ public:
         cout << "User berhasil diubah!\n";
     }
 
-    void deleteUser(const string &usernameToDelete)
+    void deleteUser(const string &emailToDelete)
     {
-        auto it = users.begin();
-        for (; it != users.end(); ++it)
+        if (users.count(emailToDelete) == 0)
         {
-            if (it->second.username == usernameToDelete)
-            {
-                break; // Keluar dari loop jika user ditemukan
-            }
-        }
-
-        if (it == users.end())
-        {
-            cout << "Username tidak ditemukan!\n";
+            cout << "Email tidak ditemukan!\n";
             return;
         }
 
         string confirmDelete;
-        cout << "Apakah Anda yakin ingin menghapus user " << usernameToDelete << "? (y/n): ";
+        cout << "Apakah Anda yakin ingin menghapus user " << emailToDelete << "? (y/n): ";
         cin >> confirmDelete;
 
         if (confirmDelete == "y" || confirmDelete == "Y")
         {
-            users.erase(it);
+            users.erase(emailToDelete);
             saveUsers();
             cout << "User berhasil dihapus!\n";
         }
@@ -415,52 +398,59 @@ public:
             cout << currentUser.username << ":~$ ";
             cin >> command; // Membaca input perintah di sini
 
-            stringstream ss(command);
-            string action, targetUsername;
-            ss >> action; // Baca kata pertama sebagai aksi
-
-            if (action == "add")
+            if (command == "add")
             {
                 registerUser();
             }
-            else if (action == "edit")
+            else if (command == "edit")
             {
-                if (ss >> targetUsername)
+                vector<string> emails = listEmails();
+                string emailToEdit;
+                cout << "Masukkan email yang ingin di edit: ";
+                cin >> emailToEdit;
+
+                if (find(emails.begin(), emails.end(), emailToEdit) != emails.end())
                 {
-                    editUser(targetUsername);
+                    cin.ignore(); // Membersihkan input buffer sebelum memanggil getline
+                    editUser(emailToEdit);
                 }
                 else
                 {
-                    cout << "Penggunaan: edit <username>\n";
+                    cout << "Email tidak ditemukan!\n";
                 }
             }
-            else if (action == "delete")
+            else if (command == "delete")
             {
-                if (ss >> targetUsername)
+                vector<string> emails = listEmails();
+                string emailToDelete;
+                cout << "Masukkan email yang ingin dihapus: ";
+                cin >> emailToDelete;
+
+                if (find(emails.begin(), emails.end(), emailToDelete) != emails.end())
                 {
-                    deleteUser(targetUsername);
+                    deleteUser(emailToDelete);
                 }
                 else
                 {
-                    cout << "Penggunaan: delete <username>\n";
+                    cout << "Email tidak ditemukan!\n";
                 }
             }
-            else if (action == "list")
+            else if (command == "list")
             {
                 listUsers();
             }
-            else if (action == "logout")
+            else if (command == "logout")
             {
                 currentLoggedInUser = {false, ""};
                 break;
             }
-            else if (action == "help")
+            else if (command == "help")
             {
                 cout << "Available commands:\n";
                 cout << "  list: Menampilkan daftar semua user\n";
                 cout << "  add: Menambahkan user baru\n";
-                cout << "  edit <username>: Mengubah data user\n";
-                cout << "  delete <username>: Menghapus user\n";
+                cout << "  edit: Mengubah data user\n";
+                cout << "  delete: Menghapus user\n";
                 cout << "  logout: Keluar dari mode admin\n";
             }
             else
@@ -515,6 +505,18 @@ public:
         {
             return {false, User{}};
         }
+    }
+
+    vector<string> listEmails()
+    {
+        vector<string> emails;
+        cout << "Daftar Email Pengguna:\n";
+        for (const auto &pair : users)
+        {
+            cout << pair.second.email << "\n";
+            emails.push_back(pair.second.email);
+        }
+        return emails;
     }
 
 private:
