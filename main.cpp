@@ -6,17 +6,36 @@
 #include <sstream>
 #include <limits>
 #include <vector>
+#include <ctime>
 
 using namespace std;
 
-struct User
+class User
 {
+private:
     string email;
     string username;
     string securityQuestion;
     string securityAnswer;
     unsigned long long passwordHash;
     bool isAdmin;
+
+public:
+    // Setter methods
+    void setEmail(const string &newEmail) { email = newEmail; }
+    void setUsername(const string &newUsername) { username = newUsername; }
+    void setSecurityQuestion(const string &newSecurityQuestion) { securityQuestion = newSecurityQuestion; }
+    void setSecurityAnswer(const string &newSecurityAnswer) { securityAnswer = newSecurityAnswer; }
+    void setPasswordHash(unsigned long long newPasswordHash) { passwordHash = newPasswordHash; }
+    void setIsAdmin(bool newIsAdmin) { isAdmin = newIsAdmin; }
+
+    // Getter methods
+    string getEmail() const { return email; }
+    string getUsername() const { return username; }
+    string getSecurityQuestion() const { return securityQuestion; }
+    string getSecurityAnswer() const { return securityAnswer; }
+    unsigned long long getPasswordHash() const { return passwordHash; }
+    bool getIsAdmin() const { return isAdmin; }
 };
 
 class LoginSystem
@@ -45,13 +64,16 @@ private:
         return hasUpper && hasLower && hasDigit && hasSymbol;
     }
 
-public:
+protected:
     pair<bool, string> currentLoggedInUser = {false, ""};
 
+public:
     LoginSystem()
     {
         loadUsers();
     }
+
+    virtual ~LoginSystem() = default;
 
     void loadUsers()
     {
@@ -63,15 +85,27 @@ public:
             User user;
             string passwordHashStr;
 
-            getline(ss, user.email, ':');
-            getline(ss, user.username, ':');
-            getline(ss, user.securityQuestion, ':');
-            getline(ss, user.securityAnswer, ':');
-            getline(ss, passwordHashStr, ':');
-            ss >> user.isAdmin;
+            string email, username, securityQuestion, securityAnswer;
+            bool isAdmin;
+            unsigned long long passwordHash;
 
-            user.passwordHash = stoull(passwordHashStr);
-            users[user.email] = user;
+            getline(ss, email, ':');
+            getline(ss, username, ':');
+            getline(ss, securityQuestion, ':');
+            getline(ss, securityAnswer, ':');
+            getline(ss, passwordHashStr, ':');
+            ss >> isAdmin;
+
+            passwordHash = stoull(passwordHashStr);
+
+            user.setEmail(email);
+            user.setUsername(username);
+            user.setSecurityQuestion(securityQuestion);
+            user.setSecurityAnswer(securityAnswer);
+            user.setPasswordHash(passwordHash);
+            user.setIsAdmin(isAdmin);
+
+            users[email] = user;
         }
         infile.close();
     }
@@ -82,66 +116,69 @@ public:
         for (const auto &pair : users)
         {
             const User &user = pair.second;
-            outfile << user.email << ":" << user.username << ":" << user.securityQuestion << ":"
-                    << user.securityAnswer << ":" << user.passwordHash << ":" << user.isAdmin << endl;
+            outfile << user.getEmail() << ":" << user.getUsername() << ":" << user.getSecurityQuestion() << ":"
+                    << user.getSecurityAnswer() << ":" << user.getPasswordHash() << ":" << user.getIsAdmin() << endl;
         }
         outfile.close();
     }
 
-    void registerUser()
+    virtual void registerUser()
     {
         User newUser;
+        string email, username, securityQuestion, securityAnswer, password;
+        bool isAdmin;
+
         cout << "Masukkan email:\n";
         cout << ">> ";
+        cin >> email;
 
-        cin >> newUser.email;
-
-        if (users.count(newUser.email) > 0)
+        if (users.count(email) > 0)
         {
             cout << "Email sudah terdaftar!\n";
             return;
         }
-        newUser.isAdmin = (newUser.email.find("@admin.com") != string::npos);
+        isAdmin = (email.find("@admin.com") != string::npos);
 
         cout << "Masukkan username:\n";
         cout << ">> ";
-
-        cin >> newUser.username;
+        cin >> username;
 
         cout << "Masukkan pertanyaan keamanan:\n";
         cout << ">> ";
-
         cin.ignore();
-        getline(cin, newUser.securityQuestion);
+        getline(cin, securityQuestion);
 
         cout << "Masukkan jawaban keamanan:\n";
         cout << ">> ";
+        getline(cin, securityAnswer);
 
-        getline(cin, newUser.securityAnswer);
-
-        string password;
         bool validPassword = false;
         while (!validPassword)
         {
             cout << "masukkan password (minimal 8 karakter, mengandung huruf besar, huruf kecil, angka, dan simbol):\n";
             cout << ">> ";
-
             cin >> password;
-
             validPassword = isValidPassword(password);
             if (!validPassword)
             {
                 cout << "Password tidak valid. Silahkan coba lagi!\n";
             }
         }
-        newUser.passwordHash = hash<string>{}(password);
+        unsigned long long passwordHash = hash<string>{}(password);
 
-        users[newUser.email] = newUser;
+        newUser.setEmail(email);
+        newUser.setUsername(username);
+        newUser.setSecurityQuestion(securityQuestion);
+        newUser.setSecurityAnswer(securityAnswer);
+        newUser.setPasswordHash(passwordHash);
+        newUser.setIsAdmin(isAdmin);
+
+        users[email] = newUser;
         saveUsers();
         cout << "Registrasi berhasil!\n";
     }
 
-    bool login()
+    virtual bool login()
     {
         string email, password;
         cout << "Masukkan email:\n";
@@ -153,10 +190,10 @@ public:
 
         if (users.count(email) > 0)
         {
-            if (users[email].passwordHash == hash<string>{}(password))
+            if (users[email].getPasswordHash() == hash<string>{}(password))
             {
                 cout << "Login berhasil!\n";
-                cout << "Selamat datang, " << (users[email].isAdmin ? "Admin" : "User") << "!\n";
+                cout << "Selamat datang, " << (users[email].getIsAdmin() ? "Admin" : "User") << "!\n";
                 currentLoggedInUser = {true, email};
                 return true;
             }
@@ -187,7 +224,22 @@ public:
         }
     }
 
-    bool resetPassword(const string &email)
+    virtual bool logout()
+    {
+        if (currentLoggedInUser.first)
+        {
+            currentLoggedInUser = {false, ""};
+            cout << "Logout berhasil!\n";
+            return true;
+        }
+        else
+        {
+            cout << "Tidak ada user yang sedang login.\n";
+            return false;
+        }
+    }
+
+    virtual bool resetPassword(const string &email)
     {
         if (users.count(email) == 0)
         {
@@ -196,11 +248,11 @@ public:
         }
 
         string answer;
-        cout << users[email].securityQuestion << ": ";
+        cout << users[email].getSecurityQuestion() << ": ";
         cin.ignore();
         getline(cin, answer);
 
-        if (answer == users[email].securityAnswer)
+        if (answer == users[email].getSecurityAnswer())
         {
             string newPassword;
             bool validPassword = false;
@@ -216,7 +268,7 @@ public:
                     cout << "Password tidak valid. Silahkan coba lagi!\n";
                 }
             }
-            users[email].passwordHash = hash<string>{}(newPassword);
+            users[email].setPasswordHash(hash<string>{}(newPassword));
             saveUsers();
             cout << "Password berhasil diubah!\n";
             return true;
@@ -228,7 +280,7 @@ public:
         }
     }
 
-    void changePassword(const string &email)
+    virtual void changePassword(const string &email)
     {
         if (users.count(email) == 0)
         {
@@ -241,7 +293,7 @@ public:
         cout << ">> ";
         cin >> currentPassword;
 
-        if (users[email].passwordHash != hash<string>{}(currentPassword))
+        if (users[email].getPasswordHash() != hash<string>{}(currentPassword))
         {
             cout << "Password saat ini salah!\n";
             return;
@@ -261,12 +313,12 @@ public:
                 cout << "Password tidak valid. Silahkan coba lagi!\n";
             }
         }
-        users[email].passwordHash = hash<string>{}(newPassword);
+        users[email].setPasswordHash(hash<string>{}(newPassword));
         saveUsers();
         cout << "Password berhasil diubah!\n";
     }
 
-    void editUser(const string &emailToEdit)
+    virtual void editUser(const string &emailToEdit)
     {
         if (users.count(emailToEdit) == 0)
         {
@@ -284,19 +336,19 @@ public:
         {
             cout << "Masukkan email baru (kosongkan jika tidak ingin mengubah):\n";
             cout << ">> ";
-
+            cin.ignore();
             getline(cin, newEmail);
             if (newEmail.empty())
             {
                 break; // Tidak mengubah email jika input kosong
             }
-            else if (users.count(newEmail) > 0 && newEmail != userToEdit.email)
+            else if (users.count(newEmail) > 0 && newEmail != userToEdit.getEmail())
             {
                 cout << "Email sudah terdaftar!\n";
             }
             else
             {
-                userToEdit.email = newEmail;
+                userToEdit.setEmail(newEmail);
                 break;
             }
         } while (true);
@@ -307,18 +359,17 @@ public:
         {
             cout << "Masukkan username baru (kosongkan jika tidak ingin mengubah):\n";
             cout << ">> ";
-
             getline(cin, newUsername);
             if (newUsername.empty())
             {
                 break; // Tidak mengubah username jika input kosong
             }
-            else if (newUsername != userToEdit.username)
+            else if (newUsername != userToEdit.getUsername())
             {
                 bool usernameExists = false;
                 for (const auto &pair : users)
                 {
-                    if (pair.second.username == newUsername)
+                    if (pair.second.getUsername() == newUsername)
                     {
                         usernameExists = true;
                         break;
@@ -330,7 +381,7 @@ public:
                 }
                 else
                 {
-                    userToEdit.username = newUsername;
+                    userToEdit.setUsername(newUsername);
                     break;
                 }
             }
@@ -347,7 +398,6 @@ public:
         {
             cout << "Masukkan password baru (minimal 8 karakter, harus mengandung huruf besar, huruf kecil, angka, dan simbol):\n";
             cout << ">> ";
-
             getline(cin, newPassword);
 
             passwordValid = isValidPassword(newPassword);
@@ -356,35 +406,33 @@ public:
                 cout << "Password tidak valid. Silakan coba lagi.\n";
             }
         }
-        userToEdit.passwordHash = hash<string>{}(newPassword);
+        userToEdit.setPasswordHash(hash<string>{}(newPassword));
 
         // Edit pertanyaan keamanan
         cout << "Masukkan pertanyaan keamanan baru (kosongkan jika tidak ingin mengubah):\n";
         cout << ">> ";
-
         string newSecurityQuestion;
         getline(cin, newSecurityQuestion);
         if (!newSecurityQuestion.empty())
         {
-            userToEdit.securityQuestion = newSecurityQuestion;
+            userToEdit.setSecurityQuestion(newSecurityQuestion);
         }
 
         // Edit jawaban keamanan
         cout << "Masukkan jawaban keamanan baru (kosongkan jika tidak ingin mengubah):\n";
         cout << ">> ";
-
         string newSecurityAnswer;
         getline(cin, newSecurityAnswer);
         if (!newSecurityAnswer.empty())
         {
-            userToEdit.securityAnswer = newSecurityAnswer;
+            userToEdit.setSecurityAnswer(newSecurityAnswer);
         }
 
         saveUsers();
         cout << "User berhasil diubah!\n";
     }
 
-    void deleteUser(const string &emailToDelete)
+    virtual void deleteUser(const string &emailToDelete)
     {
         if (users.count(emailToDelete) == 0)
         {
@@ -420,20 +468,20 @@ public:
         for (const auto &pair : users)
         {
             const User &user = pair.second;
-            cout << "Email: " << user.email << "\n"
-                 << "Username: " << user.username << "\n"
-                 << "Admin: " << (user.isAdmin ? "Ya" : "Tidak") << "\n"
+            cout << "Email: " << user.getEmail() << "\n"
+                 << "Username: " << user.getUsername() << "\n"
+                 << "Admin: " << (user.getIsAdmin() ? "Ya" : "Tidak") << "\n"
                  << "---------------------\n";
         }
     }
 
-    void handleAdminCommands()
+    virtual void handleAdminCommands()
     {
         string command;
         while (true)
         {
             auto [isLoggedIn, currentUser] = getCurrentUser();
-            cout << currentUser.username << ":~$ ";
+            cout << currentUser.getUsername() << ":~$ ";
             cin >> command; // Membaca input perintah di sini
 
             if (command == "add")
@@ -479,12 +527,14 @@ public:
             }
             else if (command == "changepassword")
             {
-                changePassword(currentUser.email);
+                changePassword(currentUser.getEmail());
             }
             else if (command == "logout")
             {
-                currentLoggedInUser = {false, ""};
-                break;
+                if (logout())
+                {
+                    break;
+                }
             }
             else if (command == "help")
             {
@@ -509,7 +559,7 @@ public:
         while (true)
         {
             auto [isLoggedIn, currentUser] = loginSystem.getCurrentUser();
-            cout << currentUser.username << ":~$ ";
+            cout << currentUser.getUsername() << ":~$ ";
             cin >> command;
 
             stringstream ss(command);
@@ -518,16 +568,18 @@ public:
 
             if (action == "whoami")
             {
-                cout << currentUser.username << endl;
+                cout << currentUser.getUsername() << endl;
             }
             else if (action == "changepassword")
             {
-                loginSystem.changePassword(currentUser.email);
+                loginSystem.changePassword(currentUser.getEmail());
             }
             else if (action == "logout")
             {
-                loginSystem.currentLoggedInUser = {false, ""};
-                break;
+                if (loginSystem.logout())
+                {
+                    break;
+                }
             }
             else if (action == "help")
             { // Menambahkan perintah help
@@ -561,10 +613,21 @@ public:
         cout << "Daftar Email Pengguna:\n";
         for (const auto &pair : users)
         {
-            cout << pair.second.email << "\n";
-            emails.push_back(pair.second.email);
+            cout << pair.second.getEmail() << "\n";
+            emails.push_back(pair.second.getEmail());
         }
         return emails;
+    }
+
+protected:
+    void logActivity(const string &activity)
+    {
+        ofstream logfile("activity.log", ios_base::app);
+        time_t now = time(0);
+        string dt = ctime(&now);
+        dt.pop_back(); // Remove the newline character
+        logfile << dt << " - " << activity << endl;
+        logfile.close();
     }
 
 private:
@@ -572,9 +635,58 @@ private:
     string filename = "users.txt";
 };
 
+class LoggingLoginSystem : public LoginSystem
+{
+public:
+    bool login() override
+    {
+        bool result = LoginSystem::login();
+        if (result)
+        {
+            logActivity("User logged in: " + currentLoggedInUser.second);
+        }
+        return result;
+    }
+
+    bool logout() override
+    {
+        bool result = LoginSystem::logout();
+        if (result)
+        {
+            logActivity("User logged out: " + currentLoggedInUser.second);
+        }
+        return result;
+    }
+
+    void registerUser() override
+    {
+        LoginSystem::registerUser();
+        logActivity("New user registered");
+    }
+
+    void editUser(const string &emailToEdit) override
+    {
+        LoginSystem::editUser(emailToEdit);
+        logActivity("User edited: " + emailToEdit);
+    }
+
+    void changePassword(const string &email) override
+    {
+        LoginSystem::changePassword(email);
+        logActivity("Password changed for user: " + email);
+    }
+
+    void handleAdminCommands() override
+    {
+        logActivity("Admin commands session started for user: " + currentLoggedInUser.second);
+        LoginSystem::handleAdminCommands();
+        logActivity("Admin commands session ended for user: " + currentLoggedInUser.second);
+    }
+};
+
 int main()
 {
-    LoginSystem loginSystem;
+    LoggingLoginSystem loginSystem;
     int choice;
 
     do
@@ -592,7 +704,7 @@ int main()
             if (loginSystem.login())
             { // Masuk ke halaman utama hanya jika login berhasil
                 auto [isLoggedIn, currentUser] = loginSystem.getCurrentUser();
-                if (currentUser.isAdmin)
+                if (currentUser.getIsAdmin())
                 {
                     loginSystem.handleAdminCommands();
                 }
