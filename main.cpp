@@ -477,7 +477,7 @@ public:
         {
             auto [isLoggedIn, currentUser] = loginSystem.getCurrentUser();
             cout << currentUser.username << ":~$ ";
-            getline(cin, command); // Menggunakan getline untuk membaca seluruh baris
+            cin >> command;
 
             stringstream ss(command);
             string action;
