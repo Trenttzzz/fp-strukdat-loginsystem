@@ -228,6 +228,44 @@ public:
         }
     }
 
+    void changePassword(const string &email)
+    {
+        if (users.count(email) == 0)
+        {
+            cout << "Email tidak ditemukan!\n";
+            return;
+        }
+
+        string currentPassword;
+        cout << "Masukkan password saat ini:\n";
+        cout << ">> ";
+        cin >> currentPassword;
+
+        if (users[email].passwordHash != hash<string>{}(currentPassword))
+        {
+            cout << "Password saat ini salah!\n";
+            return;
+        }
+
+        string newPassword;
+        bool validPassword = false;
+        while (!validPassword)
+        {
+            cout << "Masukkan password baru (minimal 8 karakter, mengandung huruf besar, huruf kecil, angka, dan simbol):\n";
+            cout << ">> ";
+            cin >> newPassword;
+
+            validPassword = isValidPassword(newPassword);
+            if (!validPassword)
+            {
+                cout << "Password tidak valid. Silahkan coba lagi!\n";
+            }
+        }
+        users[email].passwordHash = hash<string>{}(newPassword);
+        saveUsers();
+        cout << "Password berhasil diubah!\n";
+    }
+
     void editUser(const string &emailToEdit)
     {
         if (users.count(emailToEdit) == 0)
@@ -439,6 +477,10 @@ public:
             {
                 listUsers();
             }
+            else if (command == "changepassword")
+            {
+                changePassword(currentUser.email);
+            }
             else if (command == "logout")
             {
                 currentLoggedInUser = {false, ""};
@@ -451,6 +493,7 @@ public:
                 cout << "  add: Menambahkan user baru\n";
                 cout << "  edit: Mengubah data user\n";
                 cout << "  delete: Menghapus user\n";
+                cout << "  changepassword: Mengganti password\n";
                 cout << "  logout: Keluar dari mode admin\n";
             }
             else
@@ -477,6 +520,10 @@ public:
             {
                 cout << currentUser.username << endl;
             }
+            else if (action == "changepassword")
+            {
+                loginSystem.changePassword(currentUser.email);
+            }
             else if (action == "logout")
             {
                 loginSystem.currentLoggedInUser = {false, ""};
@@ -486,6 +533,7 @@ public:
             { // Menambahkan perintah help
                 cout << "Available commands:\n";
                 cout << "  whoami: Menampilkan username pengguna saat ini\n";
+                cout << "  changepassword: Mengganti password\n";
                 cout << "  logout: Keluar dari aplikasi\n";
             }
             else
